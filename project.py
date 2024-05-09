@@ -1,4 +1,6 @@
 from datetime import datetime
+import json
+import atexit
 
 class Customer:
     def __init__(self, name, phone_number):
@@ -16,13 +18,13 @@ class Barber:
     def __init__(self, name, schedule, work_hours):
         self.name = name
         self.schedule = schedule
-        self.schedule.barber = self  # Пов'язання з фахівцем
-        self.employees = []  # Список працівників
-        self.work_hours = work_hours  # Час роботи
+        self.schedule.barber = self
+        self.employees = []
+        self.work_hours = work_hours
 
-    def add_employee(self, new_employee, employee_work_hours):
+    def add_employee(self, new_employee, start_time, end_time):
         self.employees.append(new_employee)
-        self.work_hours[new_employee] = employee_work_hours
+        self.work_hours[new_employee] = {'start_time': start_time, 'end_time': end_time}
 
     def get_work_hours(self):
         return self.work_hours
@@ -36,13 +38,20 @@ class Schedule:
         self.appointments.append(appointment)
 
     def get_employees(self):
-        return self.barber.employees  # Повертає список працівників фахівця
+        return self.barber.employees
 
     def check_available_time(self, date_time):
         for appointment in self.appointments:
             if appointment.date_time == date_time:
                 return False
-        return True
+        for employee in self.barber.employees:
+            work_hours = self.barber.work_hours.get(employee)
+            if work_hours:
+                start_time = datetime.strptime(work_hours['start_time'], '%H:%M')
+                end_time = datetime.strptime(work_hours['end_time'], '%H:%M')
+                if start_time.time() <= date_time.time() <= end_time.time() and start_time.date() <= date_time.date():
+                    return True
+        return False
 
 def validate_datetime(date_str):
     try:
@@ -51,7 +60,20 @@ def validate_datetime(date_str):
     except ValueError:
         return False
 
+def save_employees(employees, filename):
+    with open(filename, 'w', encoding='utf-8') as file:
+        json.dump(employees, file, ensure_ascii=False)
+
+def load_employees(filename):
+    try:
+        with open(filename, 'r', encoding='utf-8') as file:
+            return json.load(file)
+    except FileNotFoundError:
+        return {}
+
 def main():
+    employees = load_employees('employees.json')
+
     barber_1_schedule = Schedule(barber_name="Сердж Танк'ян")
     barber_2_schedule = Schedule(barber_name="Ярослав Станіславський")
     
@@ -65,6 +87,10 @@ def main():
         "Сердж Танк'ян": barber_1,
         "Ярослав Станіславський": barber_2
     }
+
+    @atexit.register
+    def save_employees_on_exit():
+        save_employees(employees, 'employees.json')
 
     while True:
         print("1. Запис на обслуговування")
@@ -83,38 +109,47 @@ def main():
             service = input("Введіть послугу: ")
 
             print("Доступні фахівці:")
-            print("1. Сердж Танк'ян")
-            print("2. Ярослав Станіславський")
+            for barber_name in available_barbers:
+                print(barber_name)
 
             barber_name = input("Введіть ім'я фахівця: ")
-            barber = barber_1 if barber_name == "Сердж Танк'ян" else barber_2
+            if barber_name in available_barbers:
+                barber = available_barbers[barber_name]
 
-            date_time_str = input("Введіть дату та час у форматі YYYY-MM-DD HH:MM: ")
-            if validate_datetime(date_time_str):
-                date_time = datetime.strptime(date_time_str, '%Y-%m-%d %H:%M')
-                if barber.schedule.check_available_time(date_time):
-                    appointment = Appointment(customer, service, barber, date_time)
-                    barber.schedule.add_appointment(appointment)
-                    print("Запис додано успішно!")
+                date_time_str = input("Введіть дату та час у форматі YYYY-MM-DD HH:MM: ")
+                if validate_datetime(date_time_str):
+                    date_time = datetime.strptime(date_time_str, '%Y-%m-%d %H:%M')
+                    if barber.schedule.check_available_time(date_time):
+                        appointment = Appointment(customer, service, barber, date_time)
+                        barber.schedule.add_appointment(appointment)
+                        print("Запис додано успішно!")
+                    else:
+                        print("Обраний час не доступний для запису.")
                 else:
-                    print("Обраний час не доступний для запису.")
+                    print("Неправильний формат часу.")
             else:
-                print("Неправильний формат часу.")
+                print("Фахівець не знайдений.")
 
         elif choice == "2":
             new_employee = input("Введіть і'мя нового працівника: ")
-            employee_work_hours = input("Введіть години роботи працівника (наприклад, 9:00-17:00): ")
+            start_time = input("Введіть годину початку робочого дня (HH:MM): ")
+            end_time = input("Введіть годину закінчення робочого дня (HH:MM): ")
             barber_name = input("Введіть ім'я фахівця, до якого додати працівника: ")
             if barber_name in available_barbers:
                 selected_barber = available_barbers[barber_name]
-                selected_barber.add_employee(new_employee, employee_work_hours)
+                selected_barber.add_employee(new_employee, start_time, end_time)
+                
+                employees[selected_barber.name] = selected_barber.employees
+                save_employees(employees, 'employees.json')
+
                 print(f"Новий працівник {new_employee} доданий до {selected_barber.name} успішно!")
             else:
                 print("Фахівець не знайдений.")
         
         elif choice == "3":
+            print("Список працівників та їх робочий час:")
             for barber_name, barber in available_barbers.items():
-                print(f"Фахівець: {barber_name}, Прaцівники: {barber.schedule.get_employees()}, Час роботи фахівця: {barber.get_work_hours()}")
+                print(f"{barber_name}: {barber.get_work_hours()}")
 
         elif choice == "4":
             print("До побачення!")
