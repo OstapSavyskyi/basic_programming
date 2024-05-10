@@ -110,8 +110,8 @@ class Schedule:
 
 def validate_datetime(date_str):
     try:
-        datetime.strptime(date_str, "%Y-%m-%d %H:%M")
-        return True
+        date_time = datetime.strptime(date_str, "%Y-%m-%d %H:%M")
+        return date_time > datetime.now()
     except ValueError:
         return False
 
