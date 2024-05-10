@@ -8,11 +8,25 @@ class Customer:
         self.phone_number = phone_number
 
 class Appointment:
+    appointments = []
+
     def __init__(self, customer, service, barber, date_time):
         self.customer = customer
         self.service = service
         self.barber = barber
         self.date_time = date_time
+        self.save_to_json()
+
+    def save_to_json(self):
+        appointment_data = {
+            'customer': self.customer.__dict__,
+            'service': self.service,
+            'barber': self.barber.name,
+            'date_time': self.date_time.strftime('%Y-%m-%d %H:%M')
+        }
+        Appointment.appointments.append(appointment_data)
+        with open('appointments.json', 'w', encoding='utf-8') as file:
+            json.dump(Appointment.appointments, file, ensure_ascii=False)
 
 class Barber:
     def __init__(self, name, schedule, work_hours, services=[]):
@@ -58,7 +72,6 @@ class Barber:
         work_hours = barber_data['work_hours']
         barber = Barber(name, employees, work_hours)
         return barber
-
 
 class Schedule:
     def __init__(self, barber_name, appointments=[]):
@@ -124,10 +137,6 @@ def main():
     def save_employees_on_exit():
         save_employees(employees, 'employees.json')
 
-        # Збереження змін у файлі barber_data.json при виході
-        for barber_name, barber in available_barbers.items():
-            barber.save_to_json('barber_data.json')
-
     while True:
         print("1. Запис на обслуговування")
         print("2. Додати нового працівника")
@@ -142,7 +151,7 @@ def main():
             customer = Customer(name, phone_number)
 
             print("Доступні послуги:")
-            for service in selected_barber.services:
+            for service in barber_1.services:
                 print(service)
 
             service = input("Виберіть послугу: ")
@@ -153,14 +162,14 @@ def main():
 
             barber_name = input("Введіть ім'я фахівця: ")
             if barber_name in available_barbers:
-                barber = available_barbers[barber_name]
+                selected_barber = available_barbers[barber_name]
 
                 date_time_str = input("Введіть дату та час у форматі YYYY-MM-DD HH:MM: ")
                 if validate_datetime(date_time_str):
                     date_time = datetime.strptime(date_time_str, '%Y-%m-%d %H:%M')
-                    if barber.schedule.check_available_time(date_time):
-                        appointment = Appointment(customer, service, barber, date_time)
-                        barber.schedule.add_appointment(appointment)
+                    if selected_barber.schedule.check_available_time(date_time):
+                        appointment = Appointment(customer, service, selected_barber, date_time)
+                        selected_barber.schedule.add_appointment(appointment)
                         print("Запис додано успішно!")
                     else:
                         print("Обраний час не доступний для запису.")
