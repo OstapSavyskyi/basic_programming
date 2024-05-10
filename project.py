@@ -28,6 +28,17 @@ class Appointment:
         with open('appointments.json', 'w', encoding='utf-8') as file:
             json.dump(Appointment.appointments, file, ensure_ascii=False)
 
+    @staticmethod
+    def load_appointments():
+        with open('appointments.json', 'r', encoding='utf-8') as file:
+            Appointment.appointments = json.load(file)
+
+    @staticmethod
+    def check_employee_availability():
+        Appointment.load_appointments()
+        for appointment in Appointment.appointments:
+            print(f"Дата та час: {appointment['date_time']}, Фахівець: {appointment['barber']}, Послуга: {appointment['service']}, Клієнт: {appointment['customer']['name']}, Телефон: {appointment['customer']['phone_number']}")
+
 class Barber:
     def __init__(self, name, schedule, work_hours, services=[]):
         self.name = name
@@ -124,8 +135,8 @@ def main():
     barber_1_work_hours = {}
     barber_2_work_hours = {}
 
-    barber_1 = Barber("Сердж Танк'ян", barber_1_schedule, barber_1_work_hours, services=["Стрижка", "Гоління"])
-    barber_2 = Barber("Ярослав Станіславський", barber_2_schedule, barber_2_work_hours, services=["Пропозиції для дітей", "Укладання", "Корекція вусів із бородою"])
+    barber_1 = Barber("Сердж Танк'ян", barber_1_schedule, barber_1_work_hours, services=["Стрижка", "Гоління", "Пропозиції для дітей", "Укладання", "Корекція вусів із бородою"])
+    barber_2 = Barber("Ярослав Станіславський", barber_2_schedule, barber_2_work_hours, services=["Стрижка", "Гоління", "Пропозиції для дітей", "Укладання", "Корекція вусів із бородою"])
 
 
     available_barbers = {
@@ -141,7 +152,8 @@ def main():
         print("1. Запис на обслуговування")
         print("2. Додати нового працівника")
         print("3. Переглянути списки фахівців та робочий час")
-        print("4. Вихід")
+        print("4. Перевірити зайнятість працівників")
+        print("5. Вихід")
 
         choice = input("Оберіть опцію: ")
 
@@ -198,8 +210,12 @@ def main():
             print("Список працівників та їх робочий час:")
             for barber_name, barber in available_barbers.items():
                 print(f"{barber_name}: {barber.get_work_hours()}")
-
+        
         elif choice == "4":
+            print("Зайнятість працівників:")
+            Appointment.check_employee_availability()
+
+        elif choice == "5":
             print("До побачення!")
             break
         else:
