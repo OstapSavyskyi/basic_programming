@@ -15,12 +15,13 @@ class Appointment:
         self.date_time = date_time
 
 class Barber:
-    def __init__(self, name, schedule, work_hours):
+    def __init__(self, name, schedule, work_hours, services=[]):
         self.name = name
         self.schedule = schedule
         self.schedule.barber = self
         self.employees = []
         self.work_hours = work_hours
+        self.services = services
 
     def add_employee(self, new_employee, start_time, end_time):
         self.employees.append(new_employee)
@@ -28,6 +29,36 @@ class Barber:
 
     def get_work_hours(self):
         return self.work_hours
+
+    def add_service(self, service):
+        self.services.append(service)
+
+    def get_services(self):
+        return self.services
+
+    def add_employee_hours(self, employee_name, start_time, end_time):
+        self.employees.append(employee_name)
+        self.work_hours[employee_name] = {'start_time': start_time, 'end_time': end_time}
+
+    def save_to_json(self, filename):
+        barber_data = {
+            'name': self.name,
+            'employees': self.employees,
+            'work_hours': self.work_hours
+        }
+        with open(filename, 'w', encoding='utf-8') as file:
+            json.dump(barber_data, file, ensure_ascii=False)
+
+    @staticmethod
+    def load_from_json(filename):
+        with open(filename, 'r', encoding='utf-8') as file:
+            barber_data = json.load(file)
+        name = barber_data['name']
+        employees = barber_data['employees']
+        work_hours = barber_data['work_hours']
+        barber = Barber(name, employees, work_hours)
+        return barber
+
 
 class Schedule:
     def __init__(self, barber_name, appointments=[]):
@@ -80,8 +111,9 @@ def main():
     barber_1_work_hours = {}
     barber_2_work_hours = {}
 
-    barber_1 = Barber("Сердж Танк'ян", barber_1_schedule, barber_1_work_hours)
-    barber_2 = Barber("Ярослав Станіславський", barber_2_schedule, barber_2_work_hours)
+    barber_1 = Barber("Сердж Танк'ян", barber_1_schedule, barber_1_work_hours, services=["Стрижка", "Гоління"])
+    barber_2 = Barber("Ярослав Станіславський", barber_2_schedule, barber_2_work_hours, services=["Пропозиції для дітей", "Укладання", "Корекція вусів із бородою"])
+
 
     available_barbers = {
         "Сердж Танк'ян": barber_1,
@@ -92,6 +124,10 @@ def main():
     def save_employees_on_exit():
         save_employees(employees, 'employees.json')
 
+        # Збереження змін у файлі barber_data.json при виході
+        for barber_name, barber in available_barbers.items():
+            barber.save_to_json('barber_data.json')
+
     while True:
         print("1. Запис на обслуговування")
         print("2. Додати нового працівника")
@@ -101,12 +137,15 @@ def main():
         choice = input("Оберіть опцію: ")
 
         if choice == "1":
-            name = input("Введіть і'мя клієнта: ")
+            name = input("Введіть ім'я клієнта: ")
             phone_number = input("Введіть номер телефону: ")
-
             customer = Customer(name, phone_number)
 
-            service = input("Введіть послугу: ")
+            print("Доступні послуги:")
+            for service in selected_barber.services:
+                print(service)
+
+            service = input("Виберіть послугу: ")
 
             print("Доступні фахівці:")
             for barber_name in available_barbers:
@@ -134,13 +173,13 @@ def main():
             new_employee = input("Введіть і'мя нового працівника: ")
             start_time = input("Введіть годину початку робочого дня (HH:MM): ")
             end_time = input("Введіть годину закінчення робочого дня (HH:MM): ")
+            selected_barber = None
             barber_name = input("Введіть ім'я фахівця, до якого додати працівника: ")
             if barber_name in available_barbers:
                 selected_barber = available_barbers[barber_name]
                 selected_barber.add_employee(new_employee, start_time, end_time)
-                
-                employees[selected_barber.name] = selected_barber.employees
-                save_employees(employees, 'employees.json')
+
+                selected_barber.save_to_json('barber_data.json')
 
                 print(f"Новий працівник {new_employee} доданий до {selected_barber.name} успішно!")
             else:
